@@ -18,6 +18,9 @@ PKG_LICENSE_FILES:=COPYING
 
 PKG_INSTALL:=1
 PKG_BUILD_PARALLEL:=1
+# jansson provides headers + a .pc that jose's meson looks up at configure time,
+# so it must be built and staged before this package.
+PKG_BUILD_DEPENDS:=jansson
 
 include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/meson.mk
@@ -50,6 +53,17 @@ endef
 
 # no asciidoc/a2x in the SDK -> disable man pages
 MESON_ARGS += -Ddocs=disabled
+
+# stage headers, shared lib and pkgconfig so dependent packages (tang) can
+# resolve dependency('jose') at configure time
+define Build/InstallDev
+	$(INSTALL_DIR) $(1)/usr/include
+	$(CP) $(PKG_INSTALL_DIR)/usr/include/jose $(1)/usr/include/
+	$(INSTALL_DIR) $(1)/usr/lib
+	$(CP) $(PKG_INSTALL_DIR)/usr/lib/libjose.so* $(1)/usr/lib/
+	$(INSTALL_DIR) $(1)/usr/lib/pkgconfig
+	$(CP) $(PKG_INSTALL_DIR)/usr/lib/pkgconfig/jose.pc $(1)/usr/lib/pkgconfig/
+endef
 
 define Package/libjose/install
 	$(INSTALL_DIR) $(1)/usr/lib

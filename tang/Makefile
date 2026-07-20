@@ -19,6 +19,9 @@ PKG_LICENSE_FILES:=COPYING
 
 PKG_INSTALL:=1
 PKG_BUILD_PARALLEL:=1
+# jose + http-parser provide the headers/.pc that tang's meson resolves at
+# configure time, so they must be built and staged before this package.
+PKG_BUILD_DEPENDS:=jose libhttp-parser
 
 include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/meson.mk
