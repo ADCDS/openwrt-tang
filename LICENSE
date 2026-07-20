@@ -1,0 +1,7 @@
+The packaging in this repository (OpenWrt Makefiles and service scripts under
+jose/ and tang/) is licensed under the GNU General Public License v2.0.
+SPDX-License-Identifier: GPL-2.0-only
+
+The upstream software these packages build retains its own license:
+  - jose  : Apache-2.0     (https://github.com/latchset/jose)
+  - tang  : GPL-3.0-or-later (https://github.com/latchset/tang)

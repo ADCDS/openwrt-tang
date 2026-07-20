@@ -1,0 +1,39 @@
+#!/bin/sh /etc/rc.common
+# procd service for Tang. OpenWrt has no systemd socket activation, so a
+# single socat listener forks tangd (inetd-style) per incoming connection,
+# wiring the socket to tangd's stdin/stdout.
+
+USE_PROCD=1
+START=95
+STOP=10
+
+TANGD=/usr/libexec/tangd
+
+start_service() {
+	config_load tang
+
+	local enabled port address keydir
+	config_get_bool enabled tang enabled 1
+	config_get port    tang port    7500
+	config_get address tang address 0.0.0.0
+	config_get keydir  tang keydir  /var/db/tang
+
+	[ "$enabled" = "1" ] || return 0
+
+	if [ -z "$(ls -A "$keydir" 2>/dev/null)" ]; then
+		logger -t tang "no keys in $keydir; run: /usr/libexec/tangd-keygen $keydir"
+		return 1
+	fi
+
+	procd_open_instance tang
+	procd_set_param command /usr/bin/socat \
+		TCP4-LISTEN:${port},reuseaddr,fork,bind=${address} \
+		"EXEC:${TANGD} ${keydir},su=tang"
+	procd_set_param respawn
+	procd_set_param stderr 1
+	procd_close_instance
+}
+
+service_triggers() {
+	procd_add_reload_trigger "tang"
+}

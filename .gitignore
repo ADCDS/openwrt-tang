@@ -1,0 +1,12 @@
+# OpenWrt SDK (large, downloaded separately)
+openwrt-sdk-*/
+*.tar.zst
+*.tar.xz
+# build artifacts
+bin/
+build_dir/
+staging_dir/
+tmp/
+dl/
+*.apk
+*.ipk
