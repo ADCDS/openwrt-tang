@@ -1,0 +1,4 @@
+# Preserve Tang's per-device signing/derivation keys across sysupgrade.
+# Without this, a firmware flash regenerates keys and breaks every clevis
+# binding that was made against this server.
+/etc/tang

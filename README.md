@@ -57,8 +57,12 @@ make package/tang/compile
 apk add ./jose-*.apk ./libjose-*.apk ./tang-*.apk
 ```
 
-The `tang` postinst creates an unprivileged `tang` user, a key directory at
-`/var/db/tang`, and generates an initial keypair. Then:
+The `tang` postinst creates an unprivileged `tang` user, a **persistent** key
+directory at `/etc/tang`, and generates an initial keypair. `/etc/tang` (not
+`/var/db/tang`) is deliberate: on OpenWrt `/var` is a symlink to `/tmp`
+(tmpfs), so keys placed there are wiped on every reboot — the service then
+refuses to start and clevis clients can no longer unlock. The package also
+ships `/lib/upgrade/keep.d/tang` so the keys survive a sysupgrade. Then:
 
 ```sh
 uci set tang.tang.port='7500'      # NOT 80 (LuCI/uhttpd uses that)
