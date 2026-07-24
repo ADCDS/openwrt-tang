@@ -7,7 +7,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=tang
 PKG_VERSION:=15
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 
 PKG_SOURCE:=tang-$(PKG_VERSION).tar.xz
 PKG_SOURCE_URL:=https://github.com/latchset/tang/releases/download/v$(PKG_VERSION)
@@ -66,6 +66,11 @@ define Package/tang/install
 	$(INSTALL_BIN) ./files/tang.init $(1)/etc/init.d/tang
 	$(INSTALL_DIR) $(1)/etc/config
 	$(INSTALL_CONF) ./files/tang.config $(1)/etc/config/tang
+	# Preserve the runtime key directory across sysupgrade. Keys are generated
+	# per-device (not shipped), so they aren't conffiles; keep.d is the right
+	# mechanism to carry them through a firmware flash.
+	$(INSTALL_DIR) $(1)/lib/upgrade/keep.d
+	$(INSTALL_DATA) ./files/tang.keep $(1)/lib/upgrade/keep.d/tang
 endef
 
 define Package/tang/postinst
@@ -73,16 +78,23 @@ define Package/tang/postinst
 [ -n "$${IPKG_INSTROOT}" ] && exit 0
 # create unprivileged tang user/group if absent
 grep -q "^tang:" /etc/group  2>/dev/null || echo "tang:x:390:" >> /etc/group
-grep -q "^tang:" /etc/passwd 2>/dev/null || echo "tang:x:390:390:tang:/var/db/tang:/bin/false" >> /etc/passwd
-# key directory
-mkdir -p /var/db/tang
-chown tang:tang /var/db/tang
-chmod 750 /var/db/tang
-# generate an initial signing/derivation keypair if none exist
-if [ -z "$$(ls -A /var/db/tang 2>/dev/null)" ]; then
-	/usr/libexec/tangd-keygen /var/db/tang
-	chown tang:tang /var/db/tang/*
+grep -q "^tang:" /etc/passwd 2>/dev/null || echo "tang:x:390:390:tang:/etc/tang:/bin/false" >> /etc/passwd
+# Key directory. MUST be persistent: /var -> /tmp is tmpfs on OpenWrt, so the
+# old /var/db/tang default was wiped on every reboot (service then fails to
+# start; clevis clients drop to a passphrase prompt). /etc is on the overlay.
+mkdir -p /etc/tang
+# Migrate keys from the old volatile default if a previous version left some
+# there and this reboot hasn't wiped them yet -> preserves existing bindings.
+if [ -z "$$(ls -A /etc/tang 2>/dev/null)" ] && [ -n "$$(ls -A /var/db/tang 2>/dev/null)" ]; then
+	cp -a /var/db/tang/*.jwk /etc/tang/ 2>/dev/null
 fi
+# generate an initial signing/derivation keypair if none exist
+if [ -z "$$(ls -A /etc/tang 2>/dev/null)" ]; then
+	/usr/libexec/tangd-keygen /etc/tang
+fi
+chown -R tang:tang /etc/tang
+chmod 700 /etc/tang
+chmod 600 /etc/tang/*.jwk 2>/dev/null
 exit 0
 endef
 
